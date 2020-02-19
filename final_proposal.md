@@ -1,4 +1,4 @@
-### Purpose:
+### Purpose
 Predict whether a recent track will be on the Billboard 100 using Spotify and Genius data, and use the model to make inferences about the nature of Billboard 100 songs.
 
 ### Previous attempts
@@ -8,7 +8,7 @@ Suffered from a class imbalance that was exaggerated for tracks that were less r
 [A 2019 attempt with 88% accuracy and balanced classes.](https://arxiv.org/abs/1908.08609)
 These USF students used 4 models (RF, general NN, Logistic Reg, and SVM) and went to lengths to balance the classes perfectly and got the best result from RF. They didn't use any gradient boosting models, and I expect XGB will be able to outperform their RF. They did use a few extra features I plan to capture; see below!
 
-### This project's added value: 
+### This project's added value 
 Will demonstrate importance of lyrical sentiment scores when predicting the billboard. Will explore importance of these commonly excluded features: 
 number on album, i.e. 1st, 7th (rumored to be the best place for a hit song)
 label
