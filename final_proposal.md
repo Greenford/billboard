@@ -15,6 +15,8 @@ label
 album type (single, album, or compilation)
 genre
 
+Will also do some NLP analysis of term disparity between billboard and Nillboard (non-Billboard) tracks.
+
 ### Impact
 One hit track can bring in tons of profit for a record label and music artists, so it's important to know what makes a hit track. Conversely, there's a sizeable market for indie music/music that offers a novel experience apart from the mainstream. 
 
@@ -25,7 +27,7 @@ A well-made markdown file, a taped presentation, and a Flask App where a user ca
 ### Data 
 The minimum scope of this project is tracks released 2000-2019, as time to collect data is a concern. The sources will be the Spotify API, Genius API, and Billboard, and I'll be going for a perfect class balance like the USF authors. The data requirement before new features will be about 1 GB, and most of that will be the lyrics. It'll all be freshly scraped with the Billboard as a starting point. 
 
-Choosing Nillboard (non-Billboard) tracks is topic worth discussing, as it wouldn't bee too difficult to inflate a prediction score by scraping bottom-of-the-barrel Nillboard tracks. I anticipate an opposite problem would occur if tracks from the same albums as Billboard tracks were used for the Nillboard class - predictions would be less accurate because the track audio features would be more similar just by virtue of being on the same album, as well as popularity. 
+Choosing Nillboard tracks is topic worth discussing, as it wouldn't bee too difficult to inflate a prediction score by scraping bottom-of-the-barrel Nillboard tracks. I anticipate an opposite problem would occur if tracks from the same albums as Billboard tracks were used for the Nillboard class - predictions would be less accurate because the track audio features would be more similar just by virtue of being on the same album, as well as popularity. 
 
 ### Potential Problems
 Deciding how to choose the Nillboard songs will be an early problem that will need to be solved soon. 
