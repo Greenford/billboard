@@ -2,8 +2,4 @@
 data/
 auth/
 images/
-
-nothing added to commit but untracked files present (use "git add" to track)
-lapis 20:58 billboard$ ls
-auth  data  final_proposal.md  images  README.md  sandbox  src
-
+setup
