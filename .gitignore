@@ -3,3 +3,4 @@ data/
 auth/
 images/
 __pycache__/
+.ipynb_checkpoints/

@@ -1,6 +1,8 @@
 import json, billboard
 from pymongo import MongoClient
 from datetime import datetime
+import pandas as pd
+import numpy as np
 import time
 
 def run(date=None, verbose=1):
@@ -21,7 +23,7 @@ def run(date=None, verbose=1):
             print(date)
         
         date = chart.previousDate
-         time.sleep(2)
+        time.sleep(2)
 
 def clean():
     """
@@ -43,6 +45,10 @@ def clean():
     df = df.groupby(['artist', 'title'])\
         .agg({'date':min, 'peakPos':max, 'weeks':max}, axis='columns').reset_index()
     for i in range(df.shape[0]):
-        hot100filtered.insert_one(df.iloc[i].to_dict())
+        entry = df.iloc[i].to_dict()
+        entry['peakPos'] = int(entry['peakPos'])
+        entry['weeks'] = int(entry['weeks'])
+
+        hot100filtered.insert_one(entry)
 
 
