@@ -6,7 +6,7 @@ import time
 def run(date=None, verbose=1):
     collection = MongoClient()['billboard']['hot100']
 
-    kwargs = {'name':'hot-100'}
+    kwargs = {'name':'hot-100', 'max_retries=5, timeout=120}
     if not date:
         date = billboard.ChartData(**kwargs).date
     while date:
@@ -16,12 +16,12 @@ def run(date=None, verbose=1):
         weekdata['_id'] = weekdata['date']
         weekdata['scraped'] = datetime.utcnow()
         collection.insert_one(weekdata)
-
+        
         if verbose:
             print(date)
-
+        
         date = chart.previousDate
-        time.sleep(1)
+        time.sleep(2)
 
 def clean():
     """
