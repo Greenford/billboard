@@ -2,3 +2,4 @@
 data/
 auth/
 images/
+__pycache__/

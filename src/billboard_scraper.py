@@ -6,7 +6,7 @@ import time
 def run(date=None, verbose=1):
     collection = MongoClient()['billboard']['hot100']
 
-    kwargs = {'name':'hot-100', 'max_retries=5, timeout=120}
+    kwargs = {'name':'hot-100', 'max_retries':5, 'timeout':120}
     if not date:
         date = billboard.ChartData(**kwargs).date
     while date:
