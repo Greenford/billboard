@@ -3,11 +3,12 @@ from pymongo import MongoClient
 from datetime import datetime
 import time
 
-def run(verbose=1):
+def run(date=None, verbose=1):
     collection = MongoClient()['billboard']['hot100']
 
     kwargs = {'name':'hot-100'}
-    date = billboard.ChartData(**kwargs).date
+    if not date:
+        date = billboard.ChartData(**kwargs).date
     while date:
         kwargs['date'] = date
         chart = billboard.ChartData(**kwargs)
@@ -23,6 +24,9 @@ def run(verbose=1):
         time.sleep(1)
 
 def clean():
+    """
+    Cleans raw data from the billboard scraper.
+    """
     pass
 
 run()
