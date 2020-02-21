@@ -1,6 +1,7 @@
 import json, billboard
 from pymongo import MongoClient
 from datetime import datetime
+import time
 
 def run(verbose=1):
     collection = MongoClient()['billboard']['hot100']
@@ -19,7 +20,7 @@ def run(verbose=1):
             print(date)
 
         date = chart.previousDate
-
+        time.sleep(1)
 
 def clean():
     pass
