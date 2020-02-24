@@ -43,10 +43,8 @@ class Spotify_Scraper:
             return None
         else:
             return result['tracks']['items'][0]
-    
-        return self.sp.audio_features(URIlist)
 
-    def scrape_all(self, verbose=1):
+    def scrape_all(self, hook, hkwargs, verbose=1):
 
         i = 0
         num_tracks = len(self.to_scrape)
@@ -72,6 +70,8 @@ class Spotify_Scraper:
                 print(f'Scraped: {len(tracks_arr)}')
                 print(f'Errors:  {len(err_arr)}')
             af_arr = self.sp.audio_features(URIlist)
+            if hook:
+                tracks_arr = hook(tracks_arr, **hkwargs)
             self.insert_to_mongo(tracks_arr, af_arr, err_arr)
 
 
@@ -91,7 +91,7 @@ class Spotify_Scraper:
         try:
             for track in tracks_arr:
                 try:
-                    self.audio_features.insert_one(track)
+                    self.db.spotify.insert_one(track)
                 except DuplicateKeyError:
                     print('DuplicateKeyError: track already in audio_features')
             #self.audio_features.insert_many(tracks_arr, ordered=False)
@@ -110,14 +110,19 @@ class Spotify_Scraper:
         except DuplicateKeyError:
             print('Duplicate Key Error adding to audio_errlog')
 
+def insert_kv(arr, k, v):
+    for item in arr:
+        item[k] = v
+    return arr
+
 
 if __name__ == '__main__':
     s = Spotify_Scraper(0.5)
     
     #df_to_read = pd.read_csv('data/All_Billboard_MSD_Matches.csv', index_col=0)
     #s.df = df_to_read.rename(columns={'artist':'artist_name', 'track':'title', 'msdid':'track_id'})
-
-    s.scrape_all(verbose=int(sys.argv[1]))
+    hook_kwargs = {'k':'on_billboard', 'v':True}
+    s.scrape_all(insert_k, hook_kwargs, verbose=int(sys.argv[1]))
 
             
 
