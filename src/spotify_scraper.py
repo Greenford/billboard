@@ -1,10 +1,10 @@
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pymongo import MongoClient
-from pymongo.errors import BulkWriteError
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import BulkWriteError, DuplicateKeyError
 import pandas as pd
-import sqlite3, time, sys
+import sqlite3, time, sys, string
+from urllib.parse import urlparse, parse_qs
 
 class Spotify_Scraper:
     def __init__(self, sleeptime=0.5):
@@ -22,27 +22,51 @@ class Spotify_Scraper:
     
         self.db = MongoClient().billboard
         print('Connected to MongoDB')
-
-        self.populate_scrapables()
-
-    def populate_scrapables(self):
+        
+    def populate_bb_scrapables(self):
         to_scrape = [track for track in self.db.hot100filtered.find({'_id':{'$exists':'true'}})]
         print(f'Billboard tracks:    {len(to_scrape)}')
                 
-        spot_ids = {track['_id'] for track in self.db.['spotify'].find({'_id':{'$exists':'true'}}, {'_id':'true'})}
+        spot_ids = {track['_id'] for track in self.db['spotify'].find({'_id':{'$exists':'true'}}, {'_id':'true'})}
         
         self.to_scrape = []
         for track in to_scrape:
-            if track['_id'] not in spot_ids:
+            if (track['_id'] not in spot_ids) & (track['date']>'2000'):
                 self.to_scrape.append(track)
         print(f'Remaining to scrape: {len(self.to_scrape)}')
 
+    def add_full_bb_albums(self, verbose=1):
+        to_scrape = [track['metadata']['album'] for track in self.db.spotify.find()]
+        num_albums = len(to_scrape)
+        duplicates = 0
+        for i, album in enumerate(to_scrape):
+            album_id = album['id']
+            full_album = self.sp.album(album_id)
+            next_tracks = full_album['tracks']['next']
+            while next_tracks:
+                offsetn = int(parse_qs(urlparse(next_tracks).query)['offset'][0])
+                remaining_tracks = self.sp.album_tracks(album_id, offset=offsetn)
+                full_album['tracks']['items'].extend(remaining_tracks['items'])
+                next_tracks=remaining_tracks['next']
+            full_album['_id'] = full_album.pop('id')
+            try:
+                self.db['spotify_albums'].insert_one(full_album)
+            except DuplicateKeyError:
+                duplicates += 1
+            if verbose:
+                print(f'Full Album {i}/{num_albums} scraped')
+        print(f'Duplicates encountered: {duplicates}')
+
+
     def get_spotify_URI(self, artist, trackname):
+        artist = stripFeat(artist)
         result = self.sp.search(f'artist:{artist} track:{trackname}')
-        if(result['tracks']['total'] == 0):
-            return None
-        else:
-            return result['tracks']['items'][0]
+        if result['tracks']['total'] == 0:
+            trackname = trackname.translate(str.maketrans('', '', string.punctuation))
+            result = self.sp.search(f'artist:{artist} track:{trackname}')
+            if result['tracks']['total']==0:
+                return None
+        return result['tracks']['items'][0]
 
     def scrape_all(self, hook, hkwargs, verbose=1):
 
@@ -94,17 +118,15 @@ class Spotify_Scraper:
                     self.db.spotify.insert_one(track)
                 except DuplicateKeyError:
                     print('DuplicateKeyError: track already in audio_features')
-            #self.audio_features.insert_many(tracks_arr, ordered=False)
         except BulkWriteError as bwe:
             print(bwe.details)
         
         try:
             for e in err_arr:
                 try:
-                    self.audio_errlog.insert_one(e)
+                    self.db['spotify_errlog'].insert_one(e)
                 except DuplicateKeyError:
-                    print('Duplicate Key Error adding to audio_errlog')
-            #self.audio_errlog.insert_many(err_arr)
+                    print('Duplicate Key Error adding to spotify_errlog')
         except BulkWriteError as bwe:
             print(bwe.details)
         except DuplicateKeyError:
@@ -115,14 +137,20 @@ def insert_kv(arr, k, v):
         item[k] = v
     return arr
 
+def stripFeat(s):
+    if ' Featuring' in s:
+        return s[:s.index(' Featuring')]
+    elif ' x ' in s:
+        return s[:s.index(' x ')]
+    else:
+        return s
 
 if __name__ == '__main__':
-    s = Spotify_Scraper(0.5)
     
-    #df_to_read = pd.read_csv('data/All_Billboard_MSD_Matches.csv', index_col=0)
-    #s.df = df_to_read.rename(columns={'artist':'artist_name', 'track':'title', 'msdid':'track_id'})
-    hook_kwargs = {'k':'on_billboard', 'v':True}
-    s.scrape_all(insert_k, hook_kwargs, verbose=int(sys.argv[1]))
+    s = Spotify_Scraper(0.5)
+    s.add_full_bb_albums()
+    #hook_kwargs = {'k':'on_billboard', 'v':True}
+    #s.scrape_all(insert_kv, hook_kwargs, verbose=1)
 
             
 
