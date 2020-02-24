@@ -57,6 +57,47 @@ class Spotify_Scraper:
                 print(f'Full Album {i}/{num_albums} scraped')
         print(f'Duplicates encountered: {duplicates}')
 
+    def populate_nillboard_scrapables(self, verbose=1):
+        track_ids = []
+        for album in self.db.spotify_albums.find():
+            track_ids.extend([track['id'] for track in album['tracks']['items']])
+        billboard_ids = {track['metadata']['id'] for track in self.db.spotify.find()}
+        self.to_scrape = list(set(track_ids)-billboard_ids)
+
+        if verbose:
+            print(f'Nillboard tracks to scrape: {len(self.to_scrape)}')
+
+
+    def scrape_tracks_by_ids(self, verbose=1):
+        end = len(self.to_scrape)
+        for i in range(50, end+1, 50):
+            bundle = self.to_scrape[i-50:i]
+            self.scrape_tracks_by_id_bundle(bundle)
+            if verbose:
+                print(f'Nillboard tracks scraped: {i}')
+        if i < end:
+            bundle = self.to_scrape[i:end]
+            self.scrape_tracks_by_id_bundle(bundle)
+
+    def scrape_tracks_by_id_bundle(self, id_bundle):
+        metadata = self.sp.tracks(id_bundle)
+        audio_features = self.sp.audio_features(id_bundle)
+        af = dict()
+        for a in audio_features:
+            if a:
+                af[a['id']] = a
+        tracks = []
+        for m in metadata['tracks']:
+            track = dict()
+            track_id = m['id']
+            track['metadata'] = m
+            if track_id in af:
+                track['audio_features'] = af[track_id]
+            track['_id'] = track_id
+            tracks.append(track)
+        self.db['spotify_nillboard'].insert_many(tracks)
+
+
 
     def get_spotify_URI(self, artist, trackname):
         artist = stripFeat(artist)
@@ -148,7 +189,11 @@ def stripFeat(s):
 if __name__ == '__main__':
     
     s = Spotify_Scraper(0.5)
-    s.add_full_bb_albums()
+    s.populate_nillboard_scrapables()
+    s.scrape_tracks_by_ids()
+
+    #s.add_full_bb_albums()
+    
     #hook_kwargs = {'k':'on_billboard', 'v':True}
     #s.scrape_all(insert_kv, hook_kwargs, verbose=1)
 

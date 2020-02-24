@@ -25,16 +25,29 @@ class Scraper:
         self.minsleep = minsleep
         self.api = Genius(client_access_token, 
                           remove_section_headers=True)
-        self.lyrics = MongoClient('localhost', 27017).tracks.lyrics
-        self.errlog = MongoClient('localhost', 27017).tracks.errlog
-        
-        conn = sqlite3.connect('/mnt/snap/AdditionalFiles/track_metadata.db')
-        q = '''SELECT track_id, title, artist_name, year FROM songs 
-               WHERE year >= 1958 ORDER BY year DESC;'''
-        df = pd.read_sql_query(q, conn)
-        self.df = df
+        self.lyrics = MongoClient().billboard['lyrics']
+        self.errlog = MongoClient().billboard['lyrics_errlog']
 
-    def scrape_df_segment_to_db(self, scraperange, verbose=False):
+        #conn = sqlite3.connect('/mnt/snap/AdditionalFiles/track_metadata.db')
+        #q = '''SELECT track_id, title, artist_name, year FROM songs 
+        #       WHERE year >= 1958 ORDER BY year DESC;'''
+        #df = pd.read_sql_query(q, conn)
+        print('Initialized')
+
+
+    def populate_billboard_scrapables(self):
+        results = MongoClient().billboard.spotify.find()
+        self.df = pd.DataFrame(data=map(lambda r: (r['metadata']['id'], 
+            r['metadata']['artists'][0]['name'],
+            r['metadata']['name']), results), 
+            columns=['track_id', 'artist_name', 'title'])
+        print(f'Tracks identified to scrape lyrics: {self.df.shape[0]}')
+
+    def populate_nillboard_scrapables(self):
+        pass
+
+
+    def scrape_df_segment_to_db(self, scraperange, verbose=1):
         df = self.df.copy()
         for i in scraperange:
             row = df.iloc[i]
@@ -43,11 +56,13 @@ class Scraper:
             except TypeError as e:
                 self.record_error(row['track_id'], 'TypeError')
             except DuplicateKeyError: 
-                print(f'Duplicate skipped on index {i}')
-            if verbose:
+                if verbose:
+                    print(f'Duplicate skipped on index {i}')
+            if verbose > 1:
                 print(i)
 
     def scrape_song_to_db(self, artist, title, track_id):
+        artist=stripFeat(artist)
         try:
             #record stout from lyricsgenius call because it catches errors and prints
             with Capturing() as output:
@@ -107,8 +122,20 @@ class Scraper:
             'type': 'verbose',
             'message': errmsg})
 
+def stripFeat(s):
+    if ' Featuring' in s:
+        return s[:s.index(' Featuring')]
+    elif ' x ' in s:
+        return s[:s.index(' x ')]
+    else:       
+        return s 
+
 if __name__ == '__main__':
     s = Scraper()
+    s.populate_billboard_scrapables()
+    scraperange = range(0,s.df.shape[0])
+    s.scrape_df_segment_to_db(scraperange,2)
+
     '''
     end = s.df.shape[0]
     mode = int(sys.argv[1])
@@ -121,6 +148,7 @@ if __name__ == '__main__':
             scraperange = range(start, end, 10)
             s.scrape_df_segment_to_db(scraperange, verbose=True)
     '''
+    '''
     df_read = pd.read_csv('data/Billboard_MSD_Matches.csv', index_col=0)
     df_read = df_read[df_read['msdid']!='']
     df_to_read = pd.read_csv('data/All_Billboard_MSD_Matches.csv', index_col=0)
@@ -132,4 +160,4 @@ if __name__ == '__main__':
     s.df = df_to_read.rename(columns={'artist':'artist_name', 'track':'title', 'msdid':'track_id'})
     scraperange = range(s.df.shape[0])
     s.scrape_df_segment_to_db(scraperange, verbose=True)
-
+    '''
