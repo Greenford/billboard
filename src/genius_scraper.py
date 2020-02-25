@@ -3,9 +3,12 @@ from pymongo import MongoClient
 from io import StringIO
 import sys, sqlite3, time
 import pandas as pd
+import numpy as np
 import traceback as tb
 from requests.exceptions import ReadTimeout
 from pymongo.errors import DuplicateKeyError
+from functools import reduce
+from operator import add
 
 class Capturing(list):
     def __enter__(self):
@@ -44,9 +47,40 @@ class Scraper:
         print(f'Tracks identified to scrape lyrics: {self.df.shape[0]}')
 
     def populate_nillboard_scrapables(self):
-        pass
+        db = MongoClient().billboard
+        billboard_ids = {track['metadata']['id'] for track in db.spotify.find()}
+        
+        #album dataframe
+        results = db.spotify_albums.find()
+        adf = pd.DataFrame(data=map(lambda r: (r['release_date'], r['tracks']), results), 
+            columns=['date', 'tracks'])
+        adf['date'] = pd.to_datetime(adf['date'], format='%Y-%m-%d')
+        adf['year'] = adf['date'].apply(lambda d: d.year)
+        adf['tracks'] = adf['tracks'].apply(lambda tl: [track['id'] for track in tl['items']])
+        
+        #billboard dataframe
+        results = db.spotify.find()
+        bbdf = pd.DataFrame(data=map(lambda r: (r['metadata']['album']['release_date']), 
+            results), columns=['date'])
+        bbdf['date'] = pd.to_datetime(bbdf['date'],format='%Y-%m-%d')
+        bbdf['year'] = bbdf['date'].apply(lambda d: d.year)
+        bb_yearcount = bbdf.groupby('year').count()['date']
+        
+        allyear_ids = []
+        for year in range(2000,2020):
+            ids = set(reduce(add, adf[adf.year==year].tracks.values))
+            ids = list(ids-billboard_ids)
+            n = bb_yearcount[year]
+            ids = np.random.choice(np.array(ids), size=n, replace=False)
+            allyear_ids += list(ids)
 
-
+        tracks = db.spotify_nillboard.find({'_id':{'$in':allyear_ids}})
+        self.df = pd.DataFrame(data=map(lambda r: [r['_id'],
+            r['metadata']['artists'][0]['name'],
+            r['metadata']['name']], tracks),
+            columns=['track_id', 'artist_name', 'title'])
+        print(f'Tracks identified to scrape lyrics: {self.df.shape[0]}')
+        
     def scrape_df_segment_to_db(self, scraperange, verbose=1):
         df = self.df.copy()
         for i in scraperange:
@@ -132,7 +166,7 @@ def stripFeat(s):
 
 if __name__ == '__main__':
     s = Scraper()
-    s.populate_billboard_scrapables()
+    s.populate_nillboard_scrapables()
     scraperange = range(0,s.df.shape[0])
     s.scrape_df_segment_to_db(scraperange,2)
 
