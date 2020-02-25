@@ -215,7 +215,6 @@ class BillboardData(object):
             axis=1
         )
         self.df['track_placement'] = self.df.track_number/self.df.total_tracks + 1 - 1/self.df.disc_number
-        self.df.
         self.df.explicit = self.df.explicit.astype(np.uint8)
         self.df.on_billboard = self.df.on_billboard.astype(np.uint8)
         self.df = pd.get_dummies(self.df, columns=['album_type', 'key', 'time_signature', 'release_month'])
