@@ -196,7 +196,7 @@ class BillboardData(object):
     def transform_for_models(self):
         # Drop if they don't have lyrics 
         haslyrics = ~self.df.response_title.isna()
-        self.df = self.df[haslyrics]
+        self.df = self.df[haslyrics].reset_index(drop=True)
         
 
         self.df["on_billboard"] = ~self.df.obj_id.isna()
@@ -239,23 +239,26 @@ class BillboardData(object):
 
     def dummyize_record_label(self, min_label_size=12):
         # Turns each track's list of labels into a space-separated string of labels
-        self.df.label = self.df.label.apply(lambda l: " ".join([''.join(lword.split()) for lword in l.split('/')]).lower())
+        self.df.label = self.df.label.apply(lambda l: " ".join(
+            [''.join(lword.split()) for lword in l.split('/')]
+        ).lower())
         vectorizor = CountVectorizer()
         counts = vectorizor.fit_transform(self.df.label).toarray()
+
         counts = pd.DataFrame(counts, columns = map(lambda s: 'label_'+s, 
             vectorizor.get_feature_names()), dtype=np.uint8)
         labels_start_idx = self.df.shape[1]
         self.df = self.df.merge(counts, left_index=True, right_index=True)
-        
+
         lt_label=f'lt_{min_label_size}_label'
         self.df.insert(labels_start_idx, lt_label, 0)
         labels_start_idx += 1
         
-        for column in self.df.columns[labels_start_idx:]:
+        for column in list(self.df.columns[labels_start_idx:]):
             if np.sum(self.df[column]) < 12:
                 self.df[lt_label] = self.df[lt_label]+self.df[column]
-                self.df.drop(columns=[column], inplace=True)
-        self.df.drop(columns=['label'], inplace=True)
+                self.df.drop(columns=column, inplace=True, axis=1)
+        self.df.drop(columns='label', inplace=True, axis=1)
 
     def drop_popularities(self):
         self.df.drop(columns=['popularity', 'album_popularity'], inplace=True)
