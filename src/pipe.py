@@ -196,16 +196,13 @@ class BillboardData(object):
     def transform_for_models(self):
         # Drop if they don't have lyrics 
         haslyrics = ~self.df.response_title.isna()
-        self.df = self.df[haslyrics].reset_index()
+        self.df = self.df[haslyrics]
         
 
         self.df["on_billboard"] = ~self.df.obj_id.isna()
         self.df.release_date = pd.to_datetime(self.df.release_date, format="%Y-%m-%d")
         self.df["norm_sentiment"] = (self.df.poscount - self.df.negcount) / (
             self.df.poscount + self.df.negcount + 1
-        )
-        self.df["rel_sentiment"] = (self.df.poscount - self.df.negcount) / (
-            self.df.wordcount
         )
         self.df["release_year"] = self.df.release_date.apply(lambda dt: dt.year)
         self.df["release_month"] = self.df.apply(
@@ -238,7 +235,6 @@ class BillboardData(object):
             'peakPos',
             'weeks',
             'date_entered_bb',
-            'rel_sentiment',
         ], inplace=True)
 
     def dummyize_record_label(self, min_label_size=12):
@@ -260,6 +256,9 @@ class BillboardData(object):
                 self.df[lt_label] = self.df[lt_label]+self.df[column]
                 self.df.drop(columns=[column], inplace=True)
         self.df.drop(columns=['label'], inplace=True)
+
+    def drop_popularities(self):
+        self.df.drop(columns=['popularity', 'album_popularity'], inplace=True)
 
     def transform_for_EDA(self):
         pass
