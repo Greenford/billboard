@@ -260,6 +260,22 @@ class BillboardData(object):
                 self.df.drop(columns=column, inplace=True, axis=1)
         self.df.drop(columns='label', inplace=True, axis=1)
 
+    def transform_label_to_labelhitcount():
+        self.df.label = self.df.label.apply(lambda l: " ".join(
+            [''.join(lword.split()) for lword in l.split('/')]
+        ).lower())
+        hitdf = self.df[self.df.on_billboard==1]
+        vectorizor = CountVectorizer()
+        counts = vectorizor.fit_transform(hitdf.label).toarray()
+
+
+        self.label_hitcount = defaultdict(int)
+        for i, label in enumerate(vectorizor.get_feature_names()):
+            self.label_hitcount[label] = np.sum(counts[:,i])
+
+        self.df.label = self.df.label.apply(lambda s: np.mean([self.label_hitcount[lab] for lab in s.split()]))
+
+
     def drop_popularities(self):
         self.df.drop(columns=['popularity', 'album_popularity'], inplace=True)
 
