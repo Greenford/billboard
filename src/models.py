@@ -1,4 +1,4 @@
-from pipe import BillboardData
+from src.pipe import BillboardData
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,15 +11,17 @@ from sklearn.inspection import permutation_importance
 
 from functools import reduce
 from operator import add
+from collections import Counter
 
 import pickle
 
+"""
 class MyModel:
     def __init__(self, estimator, ekwargs):
-        self.est = estimator(**kwargs)
-    def fit(X, y):
-        df = X.insert(X.shape[0], 'on_billboard', y)
-
+        self.est = estimator(**ekwargs)
+    def fit(self, X, y):
+        X.insert(X.shape[1], 'on_billboard', y)
+        df = X.copy()
         df.release_date = pd.to_datetime(df.release_date, format="%Y-%m-%d")
         df["norm_sentiment"] = (df.poscount - df.negcount) / (
             df.poscount + df.negcount + 1
@@ -46,7 +48,7 @@ class MyModel:
         df.label = df.label.apply(
             lambda l: np.mean([self.label_hitcount[lab] for lab in l])
         ).astype(int)
-        
+
         # Drop unneeded columns
         df.drop(columns=[
             'poscount',
@@ -60,14 +62,14 @@ class MyModel:
             'time_signature_0',
             'release_month_1.0',
         ], inplace=True)
-        #....
-        self.df = df.copy()
 
         y = df.pop('on_billboard').values
+        df = df.reindex(sorted(df.columns), axis=1)
         X = df.values 
+        self.fitX = df.copy()
         self.est.fit(X, y)
 
-    def predict_proba(X):
+    def _fix_predict_X(self, X):
         X.release_date = pd.to_datetime(X.release_date, format="%Y-%m-%d")
         X["release_year"] = X.release_date.apply(lambda dt: dt.year)
         X["release_month"] = X.apply(
@@ -76,11 +78,12 @@ class MyModel:
             else np.nan,
             axis=1
         )
+        X['track_placement'] = X.track_number/X.total_tracks + 1 - 1/X.disc_number
         X["norm_sentiment"] = (X.poscount - X.negcount) / (
             X.poscount + X.negcount + 1
         )
-        X['track_placement'] = X.track_number/X.total_tracks + 1 - 1/X.disc_number
         X.explicit = X.explicit.astype(np.uint8)
+        
         for col in ['album_type_compilation', 'album_type_single', 
                 
                'key_1', 'key_2', 'key_3', 'key_4',
@@ -93,7 +96,7 @@ class MyModel:
                'release_month_5.0', 'release_month_6.0', 'release_month_7.0',
                'release_month_8.0', 'release_month_9.0', 'release_month_10.0',
                'release_month_11.0', 'release_month_12.0']:
-            X.insert(X.shape[0], col, 0)
+            X.insert(X.shape[1], col, 0)
         for alb_type in ['compilation', 'single']:
             X[f'album_type_{alb_type}'] = (X.album_type==alb_type).astype(np.uint8)
         for key in range(1, 12):
@@ -101,7 +104,20 @@ class MyModel:
         for ts in [1, 3, 4, 5]:
             X[f'time_signature_{ts}'] = (X.time_signature==ts).astype(np.uint8)
         for month in range(2,13):
-            X[f'release_month_{float(month)}'] = (X.release_month==float(month)).astype(uint8)
+            X[f'release_month_{float(month)}'] = (X.release_month==float(month)).astype(np.uint8)
+
+        X.drop(columns=[
+            'album_type',
+            'key',
+            'time_signature',
+            'release_month',
+            'poscount',
+            'negcount',
+            'release_date_precision',
+            'release_date',
+            'disc_number',
+            'track_number',
+        ], inplace=True)
 
         X.label = X.label.apply(
             lambda l: [''.join(lword.split()).lower() for lword in l.split('/')]
@@ -109,15 +125,25 @@ class MyModel:
         X.label = X.label.apply(
             lambda l: np.mean([self.label_hitcount[lab] for lab in l])
         ).astype(int)
+        X = X.reindex(sorted(X.columns), axis=1)
         self.predX = X
-        return est.predict_proba(X)
+        return X
+
+    def predict_proba(self, X):
+        X = self._fix_predict_X(X)
+        return self.est.predict_proba(X.values)
+
+    def predict(self, X):
+        X = self._fix_predict_X(X)
+        return self.est.predict(X.values)
 
 
-def get_data(datafile):
+def get_data():
     df = BillboardData().df 
-    df["on_billboard"] = ~self.df.obj_id.isna()
-    
-    self.df.drop(columns=[
+    df["on_billboard"] = ~df.obj_id.isna()
+    haslyrics = ~df.response_title.isna()
+    df = df[haslyrics].reset_index(drop=True) 
+    df.drop(columns=[
             'track_id',
             'obj_id',
             'artist',
@@ -133,12 +159,10 @@ def get_data(datafile):
         ], inplace=True)
 
 
-    haslyrics = ~df.response_title.isna()
-    df = df[haslyrics].reset_index(drop=True)
     y = df.pop('on_billboard')
     X = df
     return X, y
-
+"""
 
 def present_cv(cv):
     arr=[]
@@ -169,14 +193,14 @@ def plot_feature_importances(X, model, max_feats, feature_labels):
 def plot_perm_importances(model, X, y, max_feats, feature_labels):
     pi = permutation_importance(model, X, y, scoring='accuracy', n_jobs=-1, n_repeats=10)
     indices = np.argsort(pi.importances_mean)[::-1]
-    std = pi['importances_std']
+    std = pi.importances_std
     yerr = std[indices]
 
     # Plot the feature importances of the forest
     plt.figure(figsize=(15,15))
     plt.title("Permutation importances")
     plt.boxplot(pi.importances[indices])
-    #plt.xticks(range(min(X.shape[1], max_feats)), feature_labels[indices], rotation='vertical')
+    plt.xticks(range(min(X.shape[1], max_feats)), feature_labels[indices], rotation='vertical')
 
     plt.show()
 

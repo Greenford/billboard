@@ -236,6 +236,10 @@ class BillboardData(object):
             'peakPos',
             'weeks',
             'date_entered_bb',
+            'album_type_album',
+            'key_0',
+            'time_signature_0',
+            'release_month_1.0',
         ], inplace=True)
 
     def dummyize_record_label(self, min_label_size=12):
