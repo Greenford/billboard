@@ -4,6 +4,7 @@ from pymongo import MongoClient
 from functools import reduce
 from operator import add
 from sklearn.feature_extraction.text import CountVectorizer
+from collections import defaultdict, Counter
 
 class BillboardData(object):
     def __init__(self):
@@ -260,20 +261,15 @@ class BillboardData(object):
                 self.df.drop(columns=column, inplace=True, axis=1)
         self.df.drop(columns='label', inplace=True, axis=1)
 
-    def transform_label_to_labelhitcount():
-        self.df.label = self.df.label.apply(lambda l: " ".join(
-            [''.join(lword.split()) for lword in l.split('/')]
-        ).lower())
+    def transform_label_to_labelhitcount(self):
+        self.df.label = self.df.label.apply(lambda l: 
+            [''.join(lword.split()).lower() for lword in l.split('/')]
+        )
         hitdf = self.df[self.df.on_billboard==1]
-        vectorizor = CountVectorizer()
-        counts = vectorizor.fit_transform(hitdf.label).toarray()
 
-
-        self.label_hitcount = defaultdict(int)
-        for i, label in enumerate(vectorizor.get_feature_names()):
-            self.label_hitcount[label] = np.sum(counts[:,i])
-
-        self.df.label = self.df.label.apply(lambda s: np.mean([self.label_hitcount[lab] for lab in s.split()]))
+        self.label_hitcount = Counter(reduce(add,hitdf.label.values))
+        
+        self.df.label = self.df.label.apply(lambda l: np.mean([self.label_hitcount[lab] for lab in l])).astype(int)
 
 
     def drop_popularities(self):
