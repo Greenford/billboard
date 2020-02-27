@@ -239,7 +239,6 @@ class BillboardData(object):
             'album_type_album',
             'key_0',
             'time_signature_0',
-            'release_month_1.0',
         ], inplace=True)
 
     def dummyize_record_label(self, min_label_size=12):
@@ -275,7 +274,21 @@ class BillboardData(object):
         
         self.df.label = self.df.label.apply(lambda l: np.mean([self.label_hitcount[lab] for lab in l])).astype(int)
 
-
+    def scale(self):
+        scale_f={
+                'duration_ms':lambda ms: ms*1.0/60000,
+                'popularity':lambda p:p/100,
+                'album_popularity':lambda p:p/100,
+                'label':lambda l:l/100,
+                'wordcount':lambda wc:wc/100,
+                'release_year': lambda y:y-2000,
+                'tempo':lambda t:t/100,
+        }
+        for col in self.df.columns:
+            if col in scale_f:
+                self.df[col] = self.df[col].apply(scale_f[col])
+    
+    
     def drop_popularities(self):
         self.df.drop(columns=['popularity', 'album_popularity'], inplace=True)
 

@@ -80,6 +80,20 @@ class Scraper:
             r['metadata']['name']], tracks),
             columns=['track_id', 'artist_name', 'title'])
         print(f'Tracks identified to scrape lyrics: {self.df.shape[0]}')
+
+    def populate_remaining_nillboard_scrapables(self):
+        db = MongoClient().billboard
+        scraped_ids = [r['_id'] for r in db.lyrics.find()] + [
+                r['metadata']['id'] for r in db.spotify.find()]
+        print('scraped ids', len(scraped_ids))
+        tracks_cursor = db.spotify_nillboard.find({'_id':{'$nin':scraped_ids}})
+
+        data=map(lambda r: [
+            r['_id'], r['metadata']['artists'][0]['name'], r['metadata']['name']
+        ], tracks_cursor)
+        self.df = pd.DataFrame(data, columns=['track_id', 'artist_name', 'title'])
+        print(f'Tracks identified to scrape lyrics: {self.df.shape[0]}')
+
         
     def scrape_df_segment_to_db(self, scraperange, verbose=1):
         df = self.df.copy()
@@ -166,7 +180,7 @@ def stripFeat(s):
 
 if __name__ == '__main__':
     s = Scraper()
-    s.populate_nillboard_scrapables()
+    s.populate_remaining_nillboard_scrapables()
     scraperange = range(0,s.df.shape[0])
     s.scrape_df_segment_to_db(scraperange,2)
 
