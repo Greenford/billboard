@@ -10,7 +10,11 @@ class BillboardData(object):
     def __init__(self):
         self.db = MongoClient().billboard
         df1 = self.load_spotify_billboard_data()
-        df2 = self.load_spotify_nillboard_data()
+        temp = df1.copy()
+        temp['year'] = pd.to_datetime(temp.release_date, format='%Y-%m-%d').apply(lambda date:date.year)
+        yearcounts = temp[temp.year>=2000].groupby('year').count()['obj_id'].to_dict() 
+        
+        df2 = self.load_spotify_nillboard_data(yearcounts, rseed=rseed)
         lyrics_df = self.load_lyrics_data()
         adf = self.load_spotify_album_data()
         bbdf = self.load_hot_100_data()
@@ -19,7 +23,7 @@ class BillboardData(object):
             .merge(right=adf, how="left", on="album_id")\
             .merge(right=bbdf, how="left", on="obj_id")
 
-    def load_spotify_billboard_data(self):
+    def load_spotify_billboard_data(self):  
         return pd.DataFrame(
             map(
                 lambda r: [
@@ -82,8 +86,8 @@ class BillboardData(object):
             ]
         )
 
-    def load_spotify_nillboard_data(self):
-        return pd.DataFrame(
+    def load_spotify_nillboard_data(self, yearcounts, rseed=None):
+        df = pd.DataFrame(
             map(
                 lambda r: [
                     r["metadata"]["artists"][0]["name"],
@@ -144,6 +148,15 @@ class BillboardData(object):
                 "obj_id",
             ],
         )
+        df['year'] = pd.to_datetime(df.release_date, format='%Y-%m-%d').apply(lambda d:d.year)
+        chosen_ids = []
+        np.random.seed(rseed)
+        for year in yearcounts:
+            elig_ids = df[df.year==year]['track_id'].values
+            chosen_ids.extend(np.random.choice(elig_ids, size=yearcounts[year], replace=False))
+        np.random.seed()
+        chosen_ids = set(chosen_ids)
+        return df[df.track_id.apply(lambda i: i in chosen_ids)].copy()
 
     def load_lyrics_data(self):
         return pd.DataFrame(

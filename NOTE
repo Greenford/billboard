@@ -1,17 +1,16 @@
 Priorities:
-1. Models +transformers (XGB, RF, LogReg)
-  a. without lotsa dummies
-  b. with lotsa dummies
-  c. with popularity
-  d. without popularity
-2. Term Disparity
-3. Compare nillboard methods
-4. Get Genres
-5. extra lyrics
+0.0. Randomly selecting nillboard to balance by year!
+0.3. Plot by-year charactertistics
+0.7 matches
+1. Lyrics NLP Classifying or flask app? - research NLP task
+2. proper matches for data
+3. get genres
+4. Compare nillboard methods?????
+5. Get Genres
 6. label cleaning
 
+Iterate !
 
 
 
-
-Keras Classifier?
+re-do tests with hitcounts computed for test X AFTER splitting

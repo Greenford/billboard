@@ -1,4 +1,5 @@
 .login*
+*.swp
 data/
 auth/
 images/
