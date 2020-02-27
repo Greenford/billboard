@@ -1,9 +1,8 @@
 Priorities:
-0.0. Randomly selecting nillboard to balance by year!
-0.3. Plot by-year charactertistics
-0.7 matches
+0.7 matches exploration
 1. Lyrics NLP Classifying or flask app? - research NLP task
-2. proper matches for data
+1.5 calc hitcount using only hits made before the song was released
+2. tighten down on transformations before/after split
 3. get genres
 4. Compare nillboard methods?????
 5. Get Genres
@@ -13,4 +12,3 @@ Iterate !
 
 
 
-re-do tests with hitcounts computed for test X AFTER splitting
