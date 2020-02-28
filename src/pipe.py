@@ -7,8 +7,11 @@ from sklearn.feature_extraction.text import CountVectorizer
 from collections import defaultdict, Counter
 
 class BillboardData(object):
-    def __init__(self, rseed=None):
+    def __init__(self):
         self.db = MongoClient().billboard
+        self.df = None
+
+    def load(self, rseed=None):
         df1 = self.load_spotify_billboard_data()
         temp = df1.copy()
         temp['year'] = pd.to_datetime(temp.release_date, format='%Y-%m-%d').apply(lambda date:date.year)
