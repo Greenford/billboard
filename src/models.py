@@ -197,12 +197,14 @@ def plot_perm_importances(model, X, y, max_feats, feature_labels):
     yerr = std[indices]
 
     # Plot the feature importances of the forest
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(10,6))
     plt.title("Permutation importances")
     plt.boxplot(pi.importances[indices].T)
-    plt.xticks(range(min(X.shape[1], max_feats)), feature_labels[indices], rotation='vertical')
-    plt.xlim([-1, min(X.shape[1], max_feats)])
-
+    plt.xticks(range(1, min(X.shape[1], max_feats)+1), feature_labels[indices], rotation='vertical')
+    plt.xlim([-1, min(X.shape[1], max_feats)+2])
+    #plt.yscale('log')
+    plt.ylabel('Importance')
+    plt.xlabel('Feature')
     plt.show()
 
 

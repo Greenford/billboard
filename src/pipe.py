@@ -234,7 +234,12 @@ class BillboardData(object):
         self.df['track_placement'] = self.df.track_number/self.df.total_tracks + 1 - 1/self.df.disc_number
         self.df.explicit = self.df.explicit.astype(np.uint8)
         self.df.on_billboard = self.df.on_billboard.astype(np.uint8)
-        self.df = pd.get_dummies(self.df, columns=['album_type', 'key', 'time_signature', 'release_month'])
+        #self.df = pd.get_dummies(self.df, columns=[
+        #    'album_type', 
+        #    'key', 
+        #    'time_signature', 
+        #    'release_month'
+        #])
         # Drop unneeded columns
         self.df.drop(columns=[
             'track_id',
@@ -255,8 +260,8 @@ class BillboardData(object):
             'peakPos',
             'weeks',
             'date_entered_bb',
-            'album_type_album',
-            'key_0',
+      #      'album_type_album',
+      #      'key_0',
         ], inplace=True)
 
     def dummyize_record_label(self, min_label_size=12):
