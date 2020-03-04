@@ -230,13 +230,14 @@ class BillboardData:
         self.df.release_date = pd.to_datetime(self.df.release_date, format="%Y-%m-%d")
         
         #breaks out the year and month from the date
-        self.df["release_year"] = self.df.release_date.apply(lambda dt: dt.year)
-        self.df["release_month"] = self.df.apply(
-            lambda r: r.release_date.month
-            if r.release_date_precision == "day"
-            else np.nan,
-            axis=1
-        )
+        if 'release_year' not in self.df.columns:
+            self.df["release_year"] = self.df.release_date.apply(lambda dt: dt.year)
+            self.df["release_month"] = self.df.apply(
+                lambda r: r.release_date.month
+                if r.release_date_precision == "day"
+                else np.nan,
+                axis=1
+            )
 
         #computes the lyrical sentiment from the related fields.
         self.df["norm_sentiment"] = (self.df.poscount - self.df.negcount) / (
@@ -248,18 +249,19 @@ class BillboardData:
             lambda r: 
                 (r.track_number/r.total_tracks + 1 - 1/r.disc_number)
                 if r.total_tracks > 1
-                else -1 #no sense in add singles to track placement
+                else -1, #no sense in adding singles to track placement
+            axis=1
         )
         
         #self.df.explicit = self.df.explicit.astype(np.uint8)
         #self.df.on_billboard = self.df.on_billboard.astype(np.uint8)
-        
+        '''
         self.df = pd.get_dummies(self.df, columns=[
             'album_type', 
             'key', 
             'time_signature', 
             'release_month'
-        ])
+        ])'''
 
 
         # Drop unneeded columns
@@ -282,9 +284,34 @@ class BillboardData:
             'peakPos',
             'weeks',
             'date_entered_bb',
-      #      'album_type_album',
-      #      'key_0',
         ], inplace=True)
+
+    def balance_class_year(self, rseed=None):
+
+        self.df.release_date = pd.to_datetime(self.df.release_date, format="%Y-%m-%d")
+        self.df["release_year"] = self.df.release_date.apply(lambda dt: dt.year)
+        self.df["release_month"] = self.df.apply(
+            lambda r: r.release_date.month
+            if r.release_date_precision == "day"
+            else np.nan,
+            axis=1
+        )
+
+        bbmask = ~self.df.obj_id.isna()
+        bbdf = self.df[bbmask]
+        nbdf = self.df[~bbmask]
+        
+        yearcounts = bbdf.groupby('release_year').count()['energy'].to_dict()
+        chosen_ids = []
+        np.random.seed(rseed)
+        for year in range(2000,2020):
+            avail_ids = nbdf[nbdf.release_year==year]['track_id'].values
+            chosen_ids.extend(np.random.choice(avail_ids, yearcounts[year], replace=False))
+        chosen_ids = set(chosen_ids)
+        nbdf = nbdf[nbdf.track_id.apply(lambda i: i in chosen_ids)]
+        
+        self.df = bbdf.append(nbdf, ignore_index=True, sort=False)
+        np.random.seed(None)
 
     def dummyize_record_label(self, min_label_size=12):
         # Turns each track's list of labels into a space-separated string of labels
