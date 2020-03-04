@@ -6,19 +6,38 @@ from operator import add
 from sklearn.feature_extraction.text import CountVectorizer
 from collections import defaultdict, Counter
 
-class BillboardData(object):
+class BillboardData:
+    """
+    Loads, aggregates, and transforms data related to the Billboard 100 project.
+    Typical usage: 
+    bbd = BillboardData()
+    bbd.load()
+    bbd.transform...()
+    """
     def __init__(self):
         self.db = MongoClient().billboard
         self.df = None
 
+    
     def load(self, rseed=None):
+        """
+        Loads Spotify, Genius, and Billboard data into self.df.
+        """
+
+        
+        lyrics_df = self.load_lyrics_data()
+        lyric_ids = set(lyrics_df.track_id)
+       
         df1 = self.load_spotify_billboard_data()
+        haslyrics = df1.track_id.apply(lambda i: i in lyric_ids)
+        df1 = df1[haslyrics].reset_index(drop=True)
+        
+        
         temp = df1.copy()
         temp['year'] = pd.to_datetime(temp.release_date, format='%Y-%m-%d').apply(lambda date:date.year)
         yearcounts = temp[temp.year>=2000].groupby('year').count()['obj_id'].to_dict() 
         
-        lyrics_df = self.load_lyrics_data()
-        lyric_ids = set(lyrics_df.track_id)
+
         df2 = self.load_spotify_nillboard_data(lyric_ids, yearcounts, rseed=rseed)
         adf = self.load_spotify_album_data()
         bbdf = self.load_hot_100_data()
@@ -175,7 +194,7 @@ class BillboardData(object):
                     r["dict_sentiment"]["neg"],
                     r["dict_sentiment"]["wordcount"],
                 ],
-                self.db.lyrics.find(),
+                self.db.lyrics.find({'dict_sentiment.wordcount':{'$exists':'true'}}),
             ),
             columns=[
                 "track_id",
