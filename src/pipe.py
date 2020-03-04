@@ -25,22 +25,13 @@ class BillboardData:
         """
 
         
-        lyrics_df = self.load_lyrics_data()
-        lyric_ids = set(lyrics_df.track_id)
-       
-        df1 = self.load_spotify_billboard_data()
-        haslyrics = df1.track_id.apply(lambda i: i in lyric_ids)
-        df1 = df1[haslyrics].reset_index(drop=True)
-        
-        
-        temp = df1.copy()
-        temp['year'] = pd.to_datetime(temp.release_date, format='%Y-%m-%d').apply(lambda date:date.year)
-        yearcounts = temp[temp.year>=2000].groupby('year').count()['obj_id'].to_dict() 
-        
 
-        df2 = self.load_spotify_nillboard_data(lyric_ids, yearcounts, rseed=rseed)
+        df1 = self.load_spotify_billboard_data()
+        df2 = self.load_spotify_nillboard_data()
         adf = self.load_spotify_album_data()
         bbdf = self.load_hot_100_data()
+        lyrics_df = self.load_lyrics_data()
+
         self.df = df1.append(df2, ignore_index=True, sort=False)\
             .merge(right=lyrics_df, how="left", on="track_id")\
             .merge(right=adf, how="left", on="album_id")\
@@ -109,8 +100,8 @@ class BillboardData:
             ]
         )
 
-    def load_spotify_nillboard_data(self, avail_ids, yearcounts, rseed=None):
-        df = pd.DataFrame(
+    def load_spotify_nillboard_data(self):
+        return pd.DataFrame(
             map(
                 lambda r: [
                     r["metadata"]["artists"][0]["name"],
@@ -171,17 +162,6 @@ class BillboardData:
                 "obj_id",
             ],
         )
-        df['year'] = pd.to_datetime(df.release_date, format='%Y-%m-%d').apply(lambda d:d.year)
-        chosen_ids = []
-        np.random.seed(rseed)
-        for year in yearcounts:
-            elig_ids = df[
-                    (df.year==year) & (df.track_id.apply(lambda i: i in avail_ids))
-            ]['track_id']
-            chosen_ids.extend(np.random.choice(elig_ids, size=yearcounts[year], replace=False))
-        np.random.seed()
-        chosen_ids = set(chosen_ids)
-        return df[df.track_id.apply(lambda i: i in chosen_ids)].copy().drop(columns=['year'], axis=1)
 
     def load_lyrics_data(self):
         return pd.DataFrame(
@@ -232,17 +212,24 @@ class BillboardData:
             columns=["album_id", "label", "album_popularity",],
         )
 
-    def transform_for_models(self):
-        # Drop if they don't have lyrics 
+    def drop_no_lyrics(self):
         haslyrics = ~self.df.response_title.isna()
         self.df = self.df[haslyrics].reset_index(drop=True)
-        
 
+    def transform_for_models(self):
+        """
+        Transforms the dataframe for machine learning models. 
+
+        Returns: None, but alters self.df
+        """
+
+        #Makes the target column
         self.df["on_billboard"] = ~self.df.obj_id.isna()
+        
+        #converts the date-string to a datetime
         self.df.release_date = pd.to_datetime(self.df.release_date, format="%Y-%m-%d")
-        self.df["norm_sentiment"] = (self.df.poscount - self.df.negcount) / (
-            self.df.poscount + self.df.negcount + 1
-        )
+        
+        #breaks out the year and month from the date
         self.df["release_year"] = self.df.release_date.apply(lambda dt: dt.year)
         self.df["release_month"] = self.df.apply(
             lambda r: r.release_date.month
@@ -250,15 +237,31 @@ class BillboardData:
             else np.nan,
             axis=1
         )
-        self.df['track_placement'] = self.df.track_number/self.df.total_tracks + 1 - 1/self.df.disc_number
-        self.df.explicit = self.df.explicit.astype(np.uint8)
-        self.df.on_billboard = self.df.on_billboard.astype(np.uint8)
-        #self.df = pd.get_dummies(self.df, columns=[
-        #    'album_type', 
-        #    'key', 
-        #    'time_signature', 
-        #    'release_month'
-        #])
+
+        #computes the lyrical sentiment from the related fields.
+        self.df["norm_sentiment"] = (self.df.poscount - self.df.negcount) / (
+            self.df.poscount + self.df.negcount + 1
+        )
+
+        #Computes the track placement
+        self.df['track_placement'] = self.df.apply(
+            lambda r: 
+                (r.track_number/r.total_tracks + 1 - 1/r.disc_number)
+                if r.total_tracks > 1
+                else -1 #no sense in add singles to track placement
+        )
+        
+        #self.df.explicit = self.df.explicit.astype(np.uint8)
+        #self.df.on_billboard = self.df.on_billboard.astype(np.uint8)
+        
+        self.df = pd.get_dummies(self.df, columns=[
+            'album_type', 
+            'key', 
+            'time_signature', 
+            'release_month'
+        ])
+
+
         # Drop unneeded columns
         self.df.drop(columns=[
             'track_id',
