@@ -3,11 +3,12 @@ import numpy as np
 from pymongo import MongoClient
 from functools import reduce
 from operator import add
-from sklearn.feature_extraction.text import CountVectorizer
 from collections import defaultdict, Counter
 
+from sklearn.model_selection import train_test_split
 
-class BillboardData:
+
+ class BillboardData:
     """
     Loads, aggregates, and transforms data related to the Billboard 100 project.
     Typical usage: 
@@ -253,6 +254,20 @@ class BillboardData:
         haslyrics = ~self.df.response_title.isna()
         self.df = self.df[haslyrics].reset_index(drop=True)
 
+    def split_test(test_size=0.1, rstate=None):
+        """
+        Splits off a portion of the data for testing.
+
+        Args: 
+            test_size (float) fraction of the data to return.
+            rstate (int): random_state for the split
+
+        Returns: (Pandas DataFrame) test data. self.df becomes what remains. 
+        """
+
+        self.df, test = train_test_split(self.df, test_size=test_size, random_state=rstate)
+        return test 
+
     def transform_for_models(self):
         """
         Transforms self.df for machine learning models. 
@@ -395,7 +410,7 @@ class BillboardData:
         Drops the two measures of popularity. 
         """
         self.df.drop(columns=["popularity", "album_popularity"], inplace=True)
-
+ 
 
 # style kwargs for the next two functions
 plotstyle = {
