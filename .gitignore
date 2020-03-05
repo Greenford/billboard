@@ -1,6 +1,9 @@
 .login*
 *.swp
 modelkeep
+NOTE
+outline
+
 data/
 auth/
 __pycache__/
