@@ -8,7 +8,7 @@ from collections import defaultdict, Counter
 from sklearn.model_selection import train_test_split
 
 
- class BillboardData:
+class BillboardData:
     """
     Loads, aggregates, and transforms data related to the Billboard 100 project.
     Typical usage: 
@@ -254,7 +254,7 @@ from sklearn.model_selection import train_test_split
         haslyrics = ~self.df.response_title.isna()
         self.df = self.df[haslyrics].reset_index(drop=True)
 
-    def split_test(test_size=0.1, rstate=None):
+    def split_test(self, test_size=0.1, rstate=None):
         """
         Splits off a portion of the data for testing.
 
@@ -290,7 +290,7 @@ from sklearn.model_selection import train_test_split
             )
 
         # computes the lyrical sentiment from the related fields.
-        self.df["norm_sentiment"] = (self.df.poscount - self.df.negcount) / (
+        self.df["lyric_sentiment"] = (self.df.poscount - self.df.negcount) / (
             self.df.poscount + self.df.negcount + 1
         )
 
@@ -323,6 +323,7 @@ from sklearn.model_selection import train_test_split
                 "peakPos",
                 "weeks",
                 "date_entered_bb",
+                "album_type",
             ],
             inplace=True,
         )
@@ -344,7 +345,7 @@ from sklearn.model_selection import train_test_split
             self.df["release_month"] = self.df.apply(
                 lambda r: r.release_date.month
                 if r.release_date_precision == "day"
-                else np.nan,
+                else -1,
                 axis=1,
             )
         # separate classes temporarily
@@ -372,21 +373,41 @@ from sklearn.model_selection import train_test_split
         # reset random seed
         np.random.seed(None)
 
-    def transform_label_to_labelhitcount(self):
+    def transform_label_to_hitcount(self, testdf=None):
         """
         Transforms the record label names to the number of hits they have 
-        on the billboard.
+        on the billboard. This is a post test-train-split transform.
+
+        Args:
+            testdf (Pandas DataFrame): test split data if it needs to be transformed. 
+            Default None, which transforms the internal (training) data.
+
+        Returns: None if testdf is None, the transformed DataFrame otherwise
         """
-        self.df.label = self.df.label.apply(
-            lambda l: ["".join(lword.split()).lower() for lword in l.split("/")]
-        )
-        hitdf = self.df[self.df.on_billboard == 1]
 
-        self.label_hitcount = Counter(reduce(add, hitdf.label.values))
+        # train mode. 
+        if type(testdf)==type(None):
+            self.df.label = self.df.label.apply(
+                lambda l: ["".join(lword.split()).lower() for lword in l.split("/")]
+            )
+            hitdf = self.df[self.df.on_billboard == 1]
 
-        self.df.label = self.df.label.apply(
-            lambda l: np.mean([self.label_hitcount[lab] for lab in l])
-        ).astype(int)
+            self.label_hitcount = Counter(reduce(add, hitdf.label.values))
+
+            self.df.label = self.df.label.apply(
+                lambda l: np.mean([self.label_hitcount[lab] for lab in l])
+            ).astype(int)
+        
+        # test mode
+        else: 
+            testdf.label = testdf.label.apply(
+                lambda l: ["".join(lword.split()).lower() for lword in l.split("/")]
+            )
+
+            testdf.label = testdf.label.apply(
+                lambda l: np.mean([self.label_hitcount[lab] for lab in l])
+            ).astype(int)
+            return testdf
 
     def scale(self):
         """
