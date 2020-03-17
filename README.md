@@ -53,7 +53,7 @@ The top features are measures of popularity, which... well, stick around for the
 So what do the features mean? Unfortunately, most of them are not linearly interpretable. I definitely tried by using a logistic regressor and interpreting the beta coefficients, but they simply didn't make sense. Its worth noting that the two most important features have a positive correlation with odds of being on the Billboard. 
 
 ## Conclusion
-If it seems like cheating to use Spotify's track popularity and album popularity, I'd agree. Unfortunately, accuracy takes a huge hit when those are removed: XX% Working by that rationale, it might be necessary to drop label success too. On the other hand, this simply might be indicative of the true nature of hit music - maybe it largely depends on marketing budgets, presence of a music video, social media engagement, etc.
+If it seems like cheating to use Spotify's track popularity and album popularity, I'd agree. Unfortunately, accuracy takes a huge hit when those are removed: 70% Working by that rationale, it might be necessary to drop label success too. On the other hand, this simply might be indicative of the true nature of hit music - maybe it largely depends on marketing budgets, presence of a music video, social media engagement, etc.
 
 ### Future Work
 1. Rigorous Natural Language Processing of the lyrics as an additional predictive feature set. At the minimum, spaCy could be used to detect negation for the sentimental words. 
